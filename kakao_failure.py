@@ -44,7 +44,6 @@ def kakao(n, stage):
     print(failure)
     '''
 
-    
 def isSame(stage, nowIndex):
     if nowIndex < len(stage)-1 :
         if stage[nowIndex] == stage[nowIndex+1] : return True
