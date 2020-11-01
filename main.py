@@ -1,4 +1,5 @@
 import openpyxl as op
+import matplotlib.pyplot as plt
 
 file_path = 'C:/Users/cho donghee/Desktop/board_data/'
 user_data = 'user_list.xlsx'
@@ -20,7 +21,7 @@ def __loadArticleList__():
     for data in ws.rows:
         if data[0].value == 'last_article_id': last_article_id = data[1].value
         else :
-            new_article = {'번호':data[0].value, '제목':data[1].value, '내용':data[2].value, '작성자':data[3].value}
+            new_article = {'번호':data[0].value, '제목':data[1].value, '내용':data[2].value, '작성자':data[3].value, '추천':data[4].value}
             article_list.append(new_article)
     return article_list, last_article_id
 
@@ -47,7 +48,12 @@ def __login__(enter_id, enter_pw, user_list):
             return False
 
 def read_article(article):
-    print('\n● 게시물번호 : {} \n-- 제목 : {} \n-- 내용 : {} \n-- 작성자 : {}'.format(article['번호'], article['제목'], article['내용'], article['작성자']))
+    print('\n● 게시물번호 : {} \n-- 제목 : {} \n-- 내용 : {} \n-- 작성자 : {} \n-- 추천 : {}'
+          .format(article['번호'], article['제목'], article['내용'], article['작성자'], len(article['추천'].split('+')) if article['추천'] else 0))
+
+# read version 2
+def read_article_title(article):
+    print('●번호 : {}  제목 : {}'.format(article['번호'], article['제목']))
 
 def write_article(last_article_id, new_title, new_info, new_writer):
     wb = op.load_workbook(file_path + article_data)
@@ -88,12 +94,34 @@ def delete_article(article_list, article):
     wb.save(file_path + article_data)
     return __loadArticleList__()
 
+def chk_like_article(article_list, article, user):
+    wb = op.load_workbook(file_path + article_data)
+    sheet = wb.active
+    row = article_list.index(article)
+
+    like = article['추천'].split('+') if article['추천'] else []
+    if user['이름'] not in like : like.append(user['이름'])
+    else : like.remove(user['이름'])
+    article['추천'] = '+'.join(like)
+
+    sheet.cell(row=row+2, column=5).value = article['추천']
+    wb.save(file_path + article_data)
+
+def show_like_rate(article_list):
+    likes = [len(article['추천'].split('+')) if article['추천'] else 0 for article in article_list]
+    no_list = ['no : {}'.format(article['번호']) for article in article_list]
+
+    plt.title('Like Rates')
+    plt.xlabel('Article Number')
+    plt.ylabel('Point')
+    plt.bar(no_list, likes, width = 0.4, color = 'green')
+    plt.show()
 
 def start_pyBoard_login():
-    print('=== Welcome to PyBoard ===')
+    print('===== Welcome to PyBoard =====')
     user_list = __loadUserList__()
     while True :
-        print('==========================')
+        print('==============================')
         print('[1] 로그인\n[2] 회원가입\n[3] 종료')
         cmd = input('▶ 명령어를 입력해주세요 : ')
 
@@ -123,16 +151,21 @@ def start_pyBoard_login():
 
 def start_pyBoard_main(user):
     article_list, last_article_id = __loadArticleList__()
-    print('==========================')
+    print('==============================')
     print('※ 접속중인 사용자 : {}'.format(user['이름']))
     while True :
-        print('==========================')
-        print('[1] 게시물 조회 \n[2] 게시물 작성 \n[3] 게시물 수정 \n[4] 게시물 삭제 \n[5] 로그아웃')
+        print('==============================')
+        print('[1] 게시물 조회 \n[2] 게시물 작성 \n[3] 게시물 수정 \n[4] 게시물 삭제 \n[5] 게시물 추천 \n[6] 추천 통계 확인 \n[7] 로그아웃')
         cmd = input('▶ 명령어를 입력해주세요 : ')
 
         if cmd == '1':
             print('\n▷ 게시물조회 모드')
-            for article in article_list : read_article(article)
+            select = input('[1] 제목조회 \n[2] 상세조회 \n>>> ')
+            print('========= 게시물 목록 ==========')
+            if select == '1':
+                for article in article_list : read_article_title(article)
+            elif select == '2' :
+                for article in article_list : read_article(article)
 
         elif cmd == '2':
             print('\n▷ 게시물작성 모드')
@@ -170,7 +203,19 @@ def start_pyBoard_main(user):
             else : print('* 존재하지 않는 게시물 번호 입니다.')
 
         elif cmd == '5':
+            print('▷ 게시물추천 모드')
+            article_no = int(input('-- 추천할 게시물 번호를 입력해주세요 : '))
+            article = is_exists_article(article_list, article_no)
+            if article :
+                chk_like_article(article_list, article, user)
+
+        elif cmd == '6':
+            print('▷ 추천통계 확인 모드')
+            show_like_rate(article_list)
+
+        elif cmd == '7':
             print('▷ 로그아웃 !!')
             break
+
 
 start_pyBoard_login()
