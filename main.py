@@ -1,9 +1,34 @@
+## Python version : 3.7
+## Before you use this code, you must set your DB 'file_path', 'user_data', 'article_data'
+## 'user_data' -> user data by excel
+## 'article_data' -> article data by excel
+## user_data type -> ID, PW, User name          ( 3 types )
+## article_data -> Article_no, Title, Info, Writer_ID, Prefernces ( or Empty ), Datetime         ( 6 types )
+
 import openpyxl as op
 import matplotlib.pyplot as plt
+import random as rd
+import time
 
-file_path = 'C:/Users/cho donghee/Desktop/board_data/'
+file_path = 'C:/Users/SBS-/Desktop/dh/pyBoard/'
 user_data = 'user_list.xlsx'
 article_data = 'article_list.xlsx'
+
+
+###################### ADD SAMPLE ARTICLE DATA ######################
+def make_test_sample(time):
+    wb = op.load_workbook(file_path + article_data)
+    sheet = wb.active
+    ws = wb['게시물정보']
+    last_article_id = ws['b1'].value
+    for i in range(time):
+        last_article_id += 1
+        sheet.append([last_article_id, 'sample_dt', 'sample', 'admin','','-'.join([str(rd.randint(1,12)),str(rd.randint(1,31))])])
+    print('>>> sample_added')
+    ws['b1'] = last_article_id
+    wb.save(file_path + article_data)
+######################################################################
+
 
 def __loadUserList__():
     user_list = []
@@ -21,9 +46,11 @@ def __loadArticleList__():
     for data in ws.rows:
         if data[0].value == 'last_article_id': last_article_id = data[1].value
         else :
-            new_article = {'번호':data[0].value, '제목':data[1].value, '내용':data[2].value, '작성자':data[3].value, '추천':data[4].value}
+            new_article = {'번호':data[0].value, '제목':data[1].value, '내용':data[2].value,
+                           '작성자':data[3].value, '추천':data[4].value, '작성일':data[5].value}
             article_list.append(new_article)
     return article_list, last_article_id
+
 
 def __signUp__(new_id, new_pw, new_name, user_list):
     for user in user_list :
@@ -48,8 +75,9 @@ def __login__(enter_id, enter_pw, user_list):
             return False
 
 def read_article(article):
-    print('\n● 게시물번호 : {} \n-- 제목 : {} \n-- 내용 : {} \n-- 작성자 : {} \n-- 추천 : {}'
-          .format(article['번호'], article['제목'], article['내용'], article['작성자'], len(article['추천'].split('+')) if article['추천'] else 0))
+    print('\n● 게시물번호 : {} \n-- 제목 : {} \n-- 내용 : {} \n-- 작성자 : {} \n-- 추천 : {} \n-- 작성일 : {}'
+          .format(article['번호'], article['제목'], article['내용'], article['작성자'],
+                  len(article['추천'].split('+')) if article['추천'] else 0, article['작성일']))
 
 # read version 2
 def read_article_title(article):
@@ -58,7 +86,8 @@ def read_article_title(article):
 def write_article(last_article_id, new_title, new_info, new_writer):
     wb = op.load_workbook(file_path + article_data)
     sheet = wb.active
-    sheet.append([last_article_id+1, new_title, new_info, new_writer])
+    now_date = time.strftime('%m-%d', time.localtime(time.time()))
+    sheet.append([last_article_id+1, new_title, new_info, new_writer, '', now_date])
     sheet['B1'] = last_article_id+1
     wb.save(file_path + article_data)
     return __loadArticleList__()
@@ -109,12 +138,25 @@ def chk_like_article(article_list, article, user):
 
 def show_like_rate(article_list):
     likes = [len(article['추천'].split('+')) if article['추천'] else 0 for article in article_list]
-    no_list = ['no : {}'.format(article['번호']) for article in article_list]
+    no_list = ['{}'.format(article['번호']) for article in article_list]
 
     plt.title('Like Rates')
     plt.xlabel('Article Number')
     plt.ylabel('Point')
     plt.bar(no_list, likes, width = 0.4, color = 'green')
+    plt.show()
+
+def show_article_rate_per_month(article_list):
+    sorted_by_month = [0]*12
+    for article in article_list :
+        temp = article['작성일'].split('-')
+        sorted_by_month[int(temp[0]) - 1] += 1
+    month_list = [idx for idx in range(1, 13)]
+
+    plt.plot(month_list, sorted_by_month)
+    plt.xlabel('Month')
+    plt.ylabel('Point')
+    plt.title('Written Rate Per Month')
     plt.show()
 
 def start_pyBoard_login():
@@ -155,7 +197,8 @@ def start_pyBoard_main(user):
     print('※ 접속중인 사용자 : {}'.format(user['이름']))
     while True :
         print('==============================')
-        print('[1] 게시물 조회 \n[2] 게시물 작성 \n[3] 게시물 수정 \n[4] 게시물 삭제 \n[5] 게시물 추천 \n[6] 추천 통계 확인 \n[7] 로그아웃')
+        print('[1] 게시물 조회 \n[2] 게시물 작성 \n[3] 게시물 수정 \n[4] 게시물 삭제 \n[5] 게시물 추천 '
+              '\n[6] 추천 통계 확인 \n[7] 월별 게시물 통계 확인 \n[8] 로그아웃')
         cmd = input('▶ 명령어를 입력해주세요 : ')
 
         if cmd == '1':
@@ -214,6 +257,10 @@ def start_pyBoard_main(user):
             show_like_rate(article_list)
 
         elif cmd == '7':
+            print('▷ 월별 게시물통계 확인 모드')
+            show_article_rate_per_month(article_list)
+
+        elif cmd == '8':
             print('▷ 로그아웃 !!')
             break
 
